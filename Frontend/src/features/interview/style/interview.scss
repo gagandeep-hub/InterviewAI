@@ -553,11 +553,8 @@ $card-border: rgba(255, 255, 255, 0.08);
             position: absolute;
             inset: 0;
             border-radius: 50%;
-            padding: 4px;
-            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-            mask-composite: exclude;
-            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-            -webkit-mask-composite: xor;
+            -webkit-mask: radial-gradient(closest-side, transparent calc(100% - 8px), black calc(100% - 7px));
+            mask: radial-gradient(closest-side, transparent calc(100% - 8px), black calc(100% - 7px));
         }
 
         &.score--high::before {
@@ -590,6 +587,8 @@ $card-border: rgba(255, 255, 255, 0.08);
         color: $text-main;
         line-height: 1;
         letter-spacing: -0.03em;
+        position: relative;
+        z-index: 2;
     }
 
     &__pct {
@@ -597,6 +596,8 @@ $card-border: rgba(255, 255, 255, 0.08);
         font-weight: 700;
         color: $text-muted;
         margin-left: 2px;
+        position: relative;
+        z-index: 2;
     }
 
     &__sub {

@@ -2,8 +2,11 @@ import React, { useState, useRef } from 'react'
 import "../style/home.scss"
 import { useNavigate } from 'react-router'
 import { useInterview } from '../hooks/userInterview.js'
+import { useAuth } from '../../auth/hooks/useAuth.js'
+
 const Home = () => {
 
+    const { handleLogout } = useAuth()
     const { loading, generateReport,reports } = useInterview()
     const [ jobDescription, setJobDescription ] = useState("")
     const [ selfDescription, setSelfDescription ] = useState("")
@@ -25,16 +28,19 @@ const Home = () => {
         }
     }
 
-    if (loading) {
-        return (
-            <main className='loading-screen'>
-                <h1>Loading your interview plan...</h1>
-            </main>
-        )
-    }
 
     return (
         <div className='home-page'>
+
+            {/* Logout Button */}
+            <button 
+                onClick={async () => { await handleLogout(); navigate('/login'); }}
+                style={{ position: 'absolute', top: '2rem', right: '2rem', zIndex: 100, background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)', padding: '0.6rem 1.2rem', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', transition: 'all 0.3s ease' }}
+                onMouseEnter={(e) => { e.target.style.background = 'rgba(239, 68, 68, 0.2)'; e.target.style.transform = 'translateY(-2px)' }}
+                onMouseLeave={(e) => { e.target.style.background = 'rgba(239, 68, 68, 0.1)'; e.target.style.transform = 'none' }}
+            >
+                Logout
+            </button>
 
             {/* Page Header */}
             <header className='page-header'>
