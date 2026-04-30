@@ -1,0 +1,1078 @@
+# GenAi — Full-Stack Project Documentation
+
+> An AI-powered interview preparation platform built with **Express + MongoDB** (Backend) and **React + Vite** (Frontend). Features JWT cookie-based auth, Gemini AI–generated interview reports with technical/behavioral questions, skill gap analysis, a day-by-day preparation roadmap, and AI-generated resume PDF downloads.
+
+---
+
+## Table of Contents
+
+1. [Project Overview](#project-overview)
+2. [Architecture & Auth Flow](#architecture--auth-flow)
+3. [Complete Folder Structure](#complete-folder-structure)
+4. [Role of Every Folder & File](#role-of-every-folder--file)
+5. [Architecture — Interview AI Flow](#architecture--interview-ai-flow)
+6. [Step-by-Step Build Procedure](#step-by-step-build-procedure)
+   - Phase 1 — Backend Setup (Steps 1–13)
+   - Phase 2 — Frontend Setup (Steps 14–28)
+   - Phase 3 — AI Interview Feature (Steps 29–47)
+7. [API Endpoints Reference](#api-endpoints-reference)
+
+---
+
+## Project Overview
+
+| Layer    | Tech Stack                                                          |
+| -------- | ------------------------------------------------------------------- |
+| Frontend | React 19, Vite 8, React Router 7, Axios, SCSS                      |
+| Backend  | Express 5, Mongoose 9, JWT, bcryptjs, Multer, pdf-parse, Puppeteer  |
+| AI       | Google Gemini API (`@google/genai`), Zod (schema validation)        |
+| Database | MongoDB Atlas (cloud)                                               |
+| Auth     | JWT stored in HTTP cookies + token blacklisting                     |
+
+---
+
+## Architecture & Auth Flow
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant React as React Frontend :5173
+    participant Express as Express Backend :3000
+    participant MongoDB
+
+    Note over User,MongoDB: --- REGISTER FLOW ---
+    User->>React: Fills register form
+    React->>Express: POST /api/auth/register {username, email, password}
+    Express->>Express: Validate inputs
+    Express->>Express: Hash password (bcrypt)
+    Express->>MongoDB: Save user document
+    Express->>Express: Sign JWT token
+    Express->>React: Set cookie "token" + return user JSON
+    React->>React: setUser(data.user) → navigate to "/"
+
+    Note over User,MongoDB: --- LOGIN FLOW ---
+    User->>React: Fills login form
+    React->>Express: POST /api/auth/login {email, password}
+    Express->>MongoDB: Find user by email
+    Express->>Express: Compare password (bcrypt)
+    Express->>Express: Sign JWT token
+    Express->>React: Set cookie "token" + return user JSON
+    React->>React: setUser(data.user) → navigate to "/"
+
+    Note over User,MongoDB: --- AUTH CHECK (on page load) ---
+    React->>Express: GET /api/auth/get-me (cookie sent automatically)
+    Express->>Express: authMiddleware: verify JWT, check blacklist
+    Express->>MongoDB: Find user by decoded ID
+    Express->>React: Return user JSON
+    React->>React: setUser(data.user), setLoading(false)
+
+    Note over User,MongoDB: --- LOGOUT FLOW ---
+    User->>React: Clicks Logout
+    React->>Express: GET /api/auth/logout (cookie sent)
+    Express->>MongoDB: Add token to blacklist collection
+    Express->>React: Clear cookie + success message
+    React->>React: setUser(null) → redirected to /login
+```
+
+---
+
+## Complete Folder Structure
+
+```
+GenAi/
+├── Backend/
+│   ├── .env                              ← Environment variables (secrets)
+│   ├── package.json                      ← Backend dependencies & scripts
+│   ├── server.js                         ← Entry point: starts server
+│   └── src/
+│       ├── app.js                        ← Express app config & middleware
+│       ├── config/
+│       │   └── database.js               ← MongoDB connection logic
+│       ├── controllers/
+│       │   ├── auth.controller.js        ← Auth business logic
+│       │   └── interview.controller.js   ← Interview report CRUD + PDF generation
+│       ├── middlewares/
+│       │   ├── auth.middleware.js         ← JWT verification middleware
+│       │   └── file.middleware.js         ← Multer file upload middleware
+│       ├── models/
+│       │   ├── user.model.js             ← User Mongoose schema
+│       │   ├── blacklist.model.js        ← Token blacklist schema
+│       │   └── interviewReport.model.js  ← Interview report schema (AI output)
+│       ├── routes/
+│       │   ├── auth.routes.js            ← Auth API route definitions
+│       │   └── interview.routes.js       ← Interview API route definitions
+│       └── services/
+│           └── ai.service.js             ← Gemini AI integration + schema conversion
+│
+└── Frontend/
+    ├── index.html                        ← HTML entry point
+    ├── package.json                      ← Frontend dependencies & scripts
+    ├── vite.config.js                    ← Vite configuration
+    └── src/
+        ├── main.jsx                      ← React entry: renders App
+        ├── index.scss                    ← Global styles, CSS reset, dark theme
+        ├── App.jsx                       ← Provides AuthProvider + InterviewProvider + Router
+        ├── app.routes.jsx                ← Route definitions (login, register, home, interview)
+        └── features/
+            ├── auth/
+            │   ├── auth.context.jsx      ← React Context for auth state
+            │   ├── auth.form.scss        ← Styling for auth forms
+            │   ├── components/
+            │   │   └── protected.jsx     ← Protected route wrapper component
+            │   ├── hooks/
+            │   │   └── useAuth.js        ← Custom hook: login/register/logout/getMe
+            │   ├── pages/
+            │   │   ├── Login.jsx         ← Login page
+            │   │   └── Register.jsx      ← Register page
+            │   └── services/
+            │       └── auth.api.js       ← Axios API calls for auth
+            └── interview/
+                ├── interview.context.jsx ← React Context for interview state
+                ├── hooks/
+                │   └── userInterview.js  ← Custom hook: generateReport/getReports/getResumePdf
+                ├── pages/
+                │   ├── Home.jsx          ← Interview creation page (job desc + resume upload)
+                │   └── Interview.jsx     ← Report view page (questions, roadmap, score)
+                ├── services/
+                │   └── interview.api.js  ← Axios API calls for interview endpoints
+                └── style/
+                    ├── home.scss         ← Home page styling (glassmorphism card, dropzone)
+                    └── interview.scss    ← Report page styling (3-col layout, question cards)
+```
+
+---
+
+## Role of Every Folder & File
+
+### Backend
+
+| File / Folder | Role |
+|---|---|
+| **`.env`** | Stores secret values: `MONGO_URI` (MongoDB connection string) and `JWT_SECRET` (key to sign/verify tokens). Never commit this to git. |
+| **`server.js`** | The **entry point**. Loads `.env` vars, connects to MongoDB, then starts Express on port 3000. |
+| **`src/app.js`** | Creates the Express app instance. Registers global middleware: `cors` (allows frontend at :5173), `express.json()` (parses JSON bodies), `cookie-parser` (reads cookies). Mounts the auth router at `/api/auth`. |
+| **`src/config/database.js`** | Exports `connectToDB()` — connects to MongoDB Atlas using `mongoose.connect()` with the URI from `.env`. |
+| **`src/models/user.model.js`** | Defines the **User** Mongoose schema with fields: `username` (unique), `email` (unique), `password` (hashed). Maps to the `users` collection. |
+| **`src/models/blacklist.model.js`** | Defines the **BlacklistToken** schema. When a user logs out, their JWT is stored here so it can't be reused. Has `timestamps: true` for auto `createdAt`. |
+| **`src/controllers/auth.controller.js`** | Contains 4 controller functions: **register** (validate → check duplicates → hash password → create user → sign JWT → set cookie), **login** (find user → compare password → sign JWT → set cookie), **logout** (blacklist token → clear cookie), **getMe** (find user by `req.user.id` → return user data). |
+| **`src/middlewares/auth.middleware.js`** | The `authUser` middleware. Reads the JWT from `req.cookies.token`, checks if it's blacklisted, verifies it with `jwt.verify()`, then attaches `req.user = decoded` so controllers can access user info. Used on protected routes like `/get-me`. |
+| **`src/routes/auth.routes.js`** | Defines all auth endpoints using Express Router: `POST /register`, `POST /login`, `GET /logout`, `GET /get-me` (protected with `authUser` middleware). |
+
+### Frontend
+
+| File / Folder | Role |
+|---|---|
+| **`index.html`** | The single HTML page. Has a `<div id="root">` where React mounts, and loads `main.jsx` as a module script. |
+| **`src/main.jsx`** | The React entry point. Wraps the `<App />` component inside `<AuthProvider>` (so every component can access auth state) and `<StrictMode>`. |
+| **`src/App.jsx`** | Simply renders `<RouterProvider>` with the router config — this enables client-side routing. |
+| **`src/app.routes.jsx`** | Defines 3 routes using `createBrowserRouter`: `/login` → Login page, `/register` → Register page, `/` → Home page wrapped in `<Protected>`. |
+| **`src/pages/Home.jsx`** | The main authenticated page. Uses `useAuth()` to get the current user and a logout button. |
+| **`src/features/auth/auth.context.jsx`** | Creates a React Context with `user`, `setUser`, `loading`, `setLoading` state. The `AuthProvider` component wraps the entire app so any child can consume this state. |
+| **`src/features/auth/hooks/useAuth.js`** | The core custom hook. Provides `handleLogin`, `handleRegister`, `handleLogout` functions. On mount, calls `getMe()` to auto-detect if the user is already logged in (cookie still valid). |
+| **`src/features/auth/services/auth.api.js`** | Creates an Axios instance with `baseURL: http://localhost:3000` and `withCredentials: true` (sends cookies). Exports 4 functions: `register()`, `login()`, `logout()`, `getMe()` — each calls the corresponding backend endpoint. |
+| **`src/features/auth/components/protected.jsx`** | A route guard component. If `loading` → shows "Loading...", if `!user` → redirects to `/login` using `<Navigate>`, otherwise renders `children`. |
+| **`src/features/auth/pages/Login.jsx`** | Login form with email + password fields. On submit, calls `handleLogin()` from `useAuth`, then navigates to `/`. |
+| **`src/features/auth/pages/Register.jsx`** | Register form with username + email + password fields. On submit, calls `handleRegister()` from `useAuth`, then navigates to `/`. |
+| **`src/features/auth/auth.form.scss`** | SCSS styling for all auth pages — dark gradient background, glassmorphic card, styled inputs with focus effects, gradient button with hover animation. |
+
+### Backend — Interview Feature (New in Phase 3)
+
+| File / Folder | Role |
+|---|---|
+| **`src/services/ai.service.js`** | The AI integration layer. Defines Zod schemas for the interview report structure (matchScore, technicalQuestions, behavioralQuestions, skillGaps, preparationPlan, title). Contains `convertZodToGeminiSchema()` — a helper that converts Zod schemas to Gemini's native `Type`-based format (because `zodToJsonSchema` produces JSON Schema Draft-07 which Gemini ignores). Exports `generateInterviewReport()` and `generateResumePdf()`. |
+| **`src/models/interviewReport.model.js`** | Defines the **InterviewReport** Mongoose schema. Has nested sub-schemas for `technicalQuestions`, `behavioralQuestions`, `skillGaps`, and `preparationPlan`. Each report belongs to a `user` (ObjectId ref). Has `timestamps: true` for auto `createdAt`/`updatedAt`. |
+| **`src/controllers/interview.controller.js`** | Contains 4 controller functions: **generateInterViewReportController** (parse PDF with pdf-parse → call Gemini AI → save to DB → return report), **getInterviewReportByIdController** (find report by ID and user), **getAllInterviewReportsController** (list all user reports, lightweight projection), **generateResumePdfController** (fetch report → call AI for HTML → convert to PDF with Puppeteer → send as download). |
+| **`src/routes/interview.routes.js`** | Defines all interview endpoints using Express Router. All routes are protected with `authUser` middleware. The POST `/` route also uses `upload.single("resume")` for file uploads. |
+| **`src/middlewares/file.middleware.js`** | Configures Multer with `memoryStorage()` (stores file in RAM as a Buffer) and a 3MB size limit. Exports the `upload` instance used in interview routes. |
+
+### Frontend — Interview Feature (New in Phase 3)
+
+| File / Folder | Role |
+|---|---|
+| **`src/index.scss`** | Global CSS reset, dark theme base (`#0b1120` background), custom scrollbar, loading screen animation, shared button styles, and `Inter` font import from Google Fonts. |
+| **`src/features/interview/interview.context.jsx`** | Creates a React Context with `loading`, `report` (single), and `reports` (list) state. The `InterviewProvider` component wraps the app so any child can consume interview data. |
+| **`src/features/interview/hooks/userInterview.js`** | The core interview custom hook. Provides `generateReport`, `getReportById`, `getReports`, and `getResumePdf` functions. Auto-fetches data on mount: if URL has `interviewId` → fetch that report, otherwise fetch all reports. All functions update context state and handle errors gracefully. |
+| **`src/features/interview/services/interview.api.js`** | Creates Axios API calls to the interview backend: `generateInterviewReport()` (POST with FormData), `getInterviewReportById()`, `getAllInterviewReports()`, and `generateResumePdf()` (POST, returns blob). |
+| **`src/features/interview/pages/Home.jsx`** | The interview creation page. Two-panel glass card: left panel for job description textarea, right panel for resume upload (dropzone with visual feedback) OR self-description textarea. Shows recent reports as clickable cards at the bottom. On submit → calls AI → navigates to report page. |
+| **`src/features/interview/pages/Interview.jsx`** | The report view page. 3-column layout: left nav (section switcher), center content (technical questions, behavioral questions, or preparation roadmap), right sidebar (match score ring + skill gap tags). Each question is an expandable card showing intention and model answer. Includes "Download Resume" button. |
+| **`src/features/interview/style/home.scss`** | Home page styling — ambient glow orbs, glassmorphism card with `backdrop-filter: blur()`, file upload dropzone, gradient CTA button with shimmer animation, report cards grid. |
+| **`src/features/interview/style/interview.scss`** | Interview report page styling — sticky 3-column layout, collapsible question cards with slide animation, roadmap day cards, animated match score ring with conic gradient, severity-colored skill gap badges. |
+
+---
+
+## Architecture — Interview AI Flow
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant React as React Frontend :5173
+    participant Express as Express Backend :3000
+    participant Gemini as Gemini AI API
+    participant MongoDB
+
+    Note over User,MongoDB: --- GENERATE INTERVIEW REPORT ---
+    User->>React: Fills job description + uploads resume
+    React->>Express: POST /api/interview/ (FormData: resume, jobDescription, selfDescription)
+    Express->>Express: authUser middleware: verify JWT
+    Express->>Express: multer: parse resume file into memory buffer
+    Express->>Express: pdf-parse: extract text from PDF buffer
+    Express->>Gemini: generateContent() with structured schema
+    Gemini->>Express: JSON response (matchScore, questions, skillGaps, plan, title)
+    Express->>MongoDB: interviewReportModel.create({...aiResponse, user})
+    Express->>React: 201 JSON { interviewReport }
+    React->>React: navigate("/interview/:id")
+
+    Note over User,MongoDB: --- VIEW INTERVIEW REPORT ---
+    User->>React: Visits /interview/:interviewId
+    React->>Express: GET /api/interview/report/:interviewId
+    Express->>MongoDB: findOne({ _id, user })
+    Express->>React: 200 JSON { interviewReport }
+    React->>React: Render 3-column report UI
+
+    Note over User,MongoDB: --- DOWNLOAD AI RESUME PDF ---
+    User->>React: Clicks "Download Resume"
+    React->>Express: POST /api/interview/resume/pdf/:reportId
+    Express->>MongoDB: findById(reportId) → get resume + job description
+    Express->>Gemini: Generate tailored resume as HTML
+    Express->>Express: Puppeteer: convert HTML → PDF buffer
+    Express->>React: PDF file (application/pdf)
+    React->>React: Trigger browser download
+```
+
+---
+
+## Step-by-Step Build Procedure (continued)
+
+### Phase 3 — AI Interview Feature (Backend)
+
+#### Step 29: Install new Backend dependencies
+```bash
+cd Backend
+npm install @google/genai zod zod-to-json-schema multer pdf-parse puppeteer
+```
+
+| Package | Why |
+|---|---|
+| `@google/genai` | Official Google Gemini AI SDK for generating structured interview reports |
+| `zod` | Schema validation library — defines the expected shape of AI responses |
+| `zod-to-json-schema` | (kept for reference, but we use a custom converter for Gemini compatibility) |
+| `multer` | Middleware for handling `multipart/form-data` (file uploads) |
+| `pdf-parse` | Extracts text content from uploaded PDF resumes |
+| `puppeteer` | Headless Chrome for converting AI-generated HTML resumes to PDF |
+
+#### Step 30: Add `GOOGLE_GENAI_API_KEY` to `.env`
+```env
+MONGO_URI= <your_mongodb_atlas_connection_string>
+JWT_SECRET= <your_random_secret_key>
+GOOGLE_GENAI_API_KEY= <your_gemini_api_key>
+```
+
+> [!TIP]
+> Get a free Gemini API key at: https://aistudio.google.com/apikey
+
+#### Step 31: Create `src/middlewares/file.middleware.js` — File upload
+```js
+const multer = require("multer")
+
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: {
+        fileSize: 3 * 1024 * 1024 // 3MB
+    }
+})
+
+module.exports = upload
+```
+
+> [!NOTE]
+> `memoryStorage()` stores the uploaded file as a `Buffer` in `req.file.buffer` instead of writing it to disk. This is ideal for passing directly to `pdf-parse`.
+
+#### Step 32: Create `src/models/interviewReport.model.js` — AI report schema
+
+Defines nested sub-schemas for the structured AI output:
+- **`technicalQuestionSchema`** — `{ question, intention, answer }` (all required strings)
+- **`behavioralQuestionSchema`** — same structure as technical
+- **`skillGapSchema`** — `{ skill, severity }` where severity is an enum: `"low" | "medium" | "high"`
+- **`preparationPlanSchema`** — `{ day (Number), focus (String), tasks (String[]) }`
+- **`interviewReportSchema`** — combines all above + `jobDescription`, `resume`, `selfDescription`, `matchScore` (0-100), `title`, `user` (ObjectId ref), and `timestamps: true`
+
+#### Step 33: Create `src/services/ai.service.js` — Gemini AI integration
+
+This is the core AI layer. Key concepts:
+
+**Why `convertZodToGeminiSchema()` is needed:**
+The Gemini API's `responseSchema` expects its own `Type`-based format (`Type.OBJECT`, `Type.STRING`, `Type.ARRAY`, etc.). The popular `zodToJsonSchema()` library produces JSON Schema Draft-07 format (`{ $schema, $ref, definitions }`) which Gemini **completely ignores** — it returns random freeform JSON instead of your defined structure.
+
+The `convertZodToGeminiSchema()` helper recursively walks the Zod schema and converts each type:
+| Zod Type | Gemini Type |
+|---|---|
+| `z.object({...})` | `{ type: Type.OBJECT, properties, required }` |
+| `z.array(...)` | `{ type: Type.ARRAY, items }` |
+| `z.string()` | `{ type: Type.STRING }` |
+| `z.number()` | `{ type: Type.NUMBER }` |
+| `z.enum([...])` | `{ type: Type.STRING, enum: [...] }` |
+| `z.boolean()` | `{ type: Type.BOOLEAN }` |
+
+**Two exported functions:**
+- `generateInterviewReport({ resume, selfDescription, jobDescription })` → calls Gemini with the interview schema → returns parsed JSON
+- `generateResumePdf({ resume, selfDescription, jobDescription })` → calls Gemini for HTML resume → converts to PDF with Puppeteer → returns Buffer
+
+#### Step 34: Create `src/controllers/interview.controller.js` — Interview logic
+
+Contains 4 controller functions:
+- **`generateInterViewReportController`** — Wrapped in try/catch. Checks if `req.file` exists → parses PDF text with `pdf-parse` → calls `generateInterviewReport()` → saves to MongoDB → returns 201
+- **`getInterviewReportByIdController`** — Finds report by `_id` AND `user` (ensures users can only see their own reports) → returns 200 or 404
+- **`getAllInterviewReportsController`** — Lists all reports for logged-in user, sorted by newest first. Uses `.select()` to exclude heavy fields (resume, questions, etc.) for performance
+- **`generateResumePdfController`** — Fetches report → calls `generateResumePdf()` → sets PDF headers → sends buffer
+
+#### Step 35: Create `src/routes/interview.routes.js` — Interview routes
+```js
+const express = require("express")
+const authMiddleware = require("../middlewares/auth.middleware")
+const interviewController = require("../controllers/interview.controller")
+const upload = require("../middlewares/file.middleware")
+
+const interviewRouter = express.Router()
+
+interviewRouter.post("/", authMiddleware.authUser, upload.single("resume"),
+    interviewController.generateInterViewReportController)
+
+interviewRouter.get("/report/:interviewId", authMiddleware.authUser,
+    interviewController.getInterviewReportByIdController)
+
+interviewRouter.get("/", authMiddleware.authUser,
+    interviewController.getAllInterviewReportsController)
+
+interviewRouter.post("/resume/pdf/:interviewReportId", authMiddleware.authUser,
+    interviewController.generateResumePdfController)
+
+module.exports = interviewRouter
+```
+
+> [!IMPORTANT]
+> The `upload.single("resume")` middleware **must** come after `authUser` but **before** the controller. The `"resume"` string must match the FormData field name sent by the frontend.
+
+#### Step 36: Update `src/app.js` — Register interview routes
+```js
+const authRouter = require("./routes/auth.routes")
+const interviewRouter = require("./routes/interview.routes")
+
+app.use("/api/auth", authRouter)
+app.use("/api/interview", interviewRouter)
+```
+
+---
+
+### Phase 3 — AI Interview Feature (Frontend)
+
+#### Step 37: Create `src/index.scss` — Global styles
+Global CSS reset, dark theme base, Inter font import, custom scrollbar, loading screen with pulse animation, and shared button styles. Sets `background: #0b1120` and `color: #f1f5f9` for the dark theme.
+
+#### Step 38: Create `src/features/interview/interview.context.jsx` — Interview state
+```jsx
+import { createContext, useState } from "react";
+
+export const InterviewContext = createContext()
+
+export const InterviewProvider = ({ children }) => {
+    const [loading, setLoading] = useState(false)
+    const [report, setReport] = useState(null)
+    const [reports, setReports] = useState([])
+
+    return (
+        <InterviewContext.Provider value={{ loading, setLoading, report, setReport, reports, setReports }}>
+            {children}
+        </InterviewContext.Provider>
+    )
+}
+```
+
+> [!IMPORTANT]
+> This file MUST have `.jsx` extension because it contains JSX. The `loading` default is `false` (unlike AuthContext's `true`) because interview data is fetched on-demand.
+
+#### Step 39: Create `src/features/interview/services/interview.api.js` — API calls
+Four Axios functions matching the backend routes:
+- `generateInterviewReport({ jobDescription, selfDescription, resumeFile })` — POST with `FormData` + `multipart/form-data` header
+- `getInterviewReportById(interviewId)` — GET `/api/interview/report/:id`
+- `getAllInterviewReports()` — GET `/api/interview/`
+- `generateResumePdf({ interviewReportId })` — POST with `responseType: "blob"` for binary PDF download
+
+#### Step 40: Create `src/features/interview/hooks/userInterview.js` — Custom hook
+The core hook that bridges the API and React context:
+- `generateReport()` — calls API, saves to context, returns the report (or `null` on error)
+- `getReportById(id)` — fetches a single report
+- `getReports()` — fetches all reports (list)
+- `getResumePdf(id)` — triggers PDF download via `window.URL.createObjectURL`
+- **`useEffect` on mount** — auto-fetches based on URL: if `interviewId` param exists → fetch that report, else → fetch all reports
+
+> [!NOTE]
+> All return statements are **inside** the try/catch block. If they're outside, a failed API call leaves `response` as `null` and `response.interviewReport` throws a `TypeError`.
+
+#### Step 41: Create `src/features/interview/pages/Home.jsx` — Interview creation page
+Two-panel glassmorphism card:
+- **Left panel**: Job description textarea (required, 5000 char limit)
+- **Right panel**: Resume upload dropzone (shows green checkmark + filename when selected) OR self-description textarea
+- **Footer**: "Generate My Interview Strategy" button with shimmer animation
+- **Below card**: Grid of recent report cards (clickable → navigates to report)
+- **Validation**: Checks job description is not empty, and either resume or self-description is provided
+
+#### Step 42: Create `src/features/interview/pages/Interview.jsx` — Report view page
+3-column responsive layout:
+- **Left nav**: Section switcher (Technical, Behavioral, Road Map) with active state highlight + "Download Resume" button
+- **Center content**: Expandable `QuestionCard` components showing question, intention, and model answer. `RoadMapDay` components for the preparation plan
+- **Right sidebar**: Match score ring (conic gradient colored by score), skill gap tags (colored by severity)
+
+#### Step 43: Create `src/features/interview/style/home.scss` — Home page styles
+Dark glassmorphism theme: ambient floating glow orbs with CSS animations, `backdrop-filter: blur(16px)` glass card, file upload dropzone with hover effects, gradient CTA button with shimmer animation, and a responsive reports grid.
+
+#### Step 44: Create `src/features/interview/style/interview.scss` — Report page styles
+3-column sticky layout, collapsible question cards with slide-down animation, numbered question indices with gradient backgrounds, roadmap day cards with purple bullet points, animated match score ring using `conic-gradient`, and severity-colored skill gap badges (red/yellow/green).
+
+#### Step 45: Update `src/App.jsx` — Add InterviewProvider
+```jsx
+import { RouterProvider } from "react-router"
+import { router } from "./app.routes.jsx"
+import { AuthProvider } from "./features/auth/auth.context.jsx"
+import { InterviewProvider } from "./features/interview/interview.context.jsx"
+
+function App() {
+  return (
+    <AuthProvider>
+      <InterviewProvider>
+        <RouterProvider router={router} />
+      </InterviewProvider>
+    </AuthProvider>
+  )
+}
+export default App
+```
+
+> [!IMPORTANT]
+> Both providers must wrap `RouterProvider`. `AuthProvider` is outermost (interview hooks may need auth state). The `InterviewProvider` wraps the router so all interview pages can access the shared state.
+
+#### Step 46: Update `src/app.routes.jsx` — Add interview route
+```jsx
+import { createBrowserRouter } from "react-router";
+import Login from "./features/auth/pages/Login";
+import Register from "./features/auth/pages/Register";
+import Home from "./features/interview/pages/Home";
+import Interview from "./features/interview/pages/Interview";
+import Protected from "./features/auth/components/protected";
+
+export const router = createBrowserRouter([
+    { path: "/login", element: <Login /> },
+    { path: "/register", element: <Register /> },
+    { path: "/", element: <Protected><Home /></Protected> },
+    { path: "/interview/:interviewId", element: <Protected><Interview /></Protected> }
+])
+```
+
+> [!NOTE]
+> Home is now imported from `./features/interview/pages/Home` (not `./pages/Home`). The `/interview/:interviewId` route uses the MongoDB `_id` as the URL parameter.
+
+#### Step 47: Update `src/main.jsx` — Add global styles
+```jsx
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import App from './App.jsx'
+import './index.scss'
+
+createRoot(document.getElementById('root')).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+)
+```
+
+> [!NOTE]
+> `AuthProvider` was moved from `main.jsx` into `App.jsx` (Step 45) to keep the entry point clean. The `index.scss` import applies global styles to all pages.
+
+---
+
+## API Endpoints Reference
+
+### Auth Endpoints
+
+| Method | Endpoint | Auth | Body | Description |
+|--------|----------|------|------|-------------|
+| `POST` | `/api/auth/register` | Public | `{ username, email, password }` | Creates new user, sets JWT cookie |
+| `POST` | `/api/auth/login` | Public | `{ email, password }` | Validates credentials, sets JWT cookie |
+| `GET` | `/api/auth/logout` | Public | — | Blacklists token, clears cookie |
+| `GET` | `/api/auth/get-me` | **Private** | — | Returns current user from JWT |
+
+### Interview Endpoints
+
+| Method | Endpoint | Auth | Body | Description |
+|--------|----------|------|------|-------------|
+| `POST` | `/api/interview/` | **Private** | FormData: `resume` (file), `jobDescription`, `selfDescription` | Parses resume PDF, calls Gemini AI, saves report to DB |
+| `GET` | `/api/interview/` | **Private** | — | Returns all interview reports for logged-in user (lightweight) |
+| `GET` | `/api/interview/report/:interviewId` | **Private** | — | Returns full interview report by ID |
+| `POST` | `/api/interview/resume/pdf/:interviewReportId` | **Private** | — | Generates a tailored resume PDF using AI + Puppeteer |
+
+---
+
+> [!NOTE]
+> The `interviewId` used in URLs is the MongoDB auto-generated `_id` field. It is created when the report is saved to the database and passed to the frontend for navigation.
+
+
+
+---
+
+## Step-by-Step Build Procedure
+
+### Phase 1 — Backend Setup
+
+#### Step 1: Initialize the Backend project
+```bash
+mkdir GenAi
+cd GenAi
+mkdir Backend
+cd Backend
+npm init -y
+```
+
+#### Step 2: Install Backend dependencies
+```bash
+npm install express dotenv mongoose bcryptjs jsonwebtoken cookie-parser cors
+```
+
+| Package | Why |
+|---|---|
+| `express` | Web framework for Node.js |
+| `dotenv` | Loads `.env` variables into `process.env` |
+| `mongoose` | MongoDB ODM — defines schemas, connects to DB |
+| `bcryptjs` | Hashes passwords before storing in DB |
+| `jsonwebtoken` | Creates and verifies JWT tokens |
+| `cookie-parser` | Reads cookies from incoming requests |
+| `cors` | Allows cross-origin requests from frontend |
+
+#### Step 3: Create the `.env` file
+Create a file called `.env` in the `Backend/` root:
+```env
+MONGO_URI= <your_mongodb_atlas_connection_string>
+JWT_SECRET= <your_random_secret_key>
+```
+
+> [!TIP]
+> Generate a random JWT secret with: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
+
+#### Step 4: Create the folder structure
+```bash
+mkdir src
+mkdir src/config src/controllers src/middlewares src/models src/routes
+```
+
+#### Step 5: Create `src/config/database.js` — MongoDB connection
+```js
+const mongoose = require("mongoose")
+
+async function connectToDB(){
+    try{
+        await mongoose.connect(process.env.MONGO_URI)
+        console.log("connected to Database")
+    }
+    catch(err){
+        console.log(err)
+    }
+}
+module.exports = connectToDB
+```
+
+#### Step 6: Create `src/models/user.model.js` — User schema
+```js
+const mongoose = require("mongoose")
+
+const userSchema = new mongoose.Schema({
+    username: {
+        type: String,
+        unique: [true, "username already taken"],
+        required: true,
+    },
+    email: {
+        type: String,
+        unique: [true, "Account already exist with this email address"],
+        required: true,
+    },
+    password: {
+        type: String,
+        required: true
+    }
+})
+
+const userModel = mongoose.model("users", userSchema)
+module.exports = userModel
+```
+
+#### Step 7: Create `src/models/blacklist.model.js` — Token blacklist schema
+```js
+const mongoose = require('mongoose')
+
+const blacklistTokenSchema = new mongoose.Schema({
+    token: {
+        type: String,
+        required: [true, "token is required to be added in blacklist"]
+    }
+}, {
+    timestamps: true
+})
+
+const tokenBlacklistModel = mongoose.model("blacklistTokens", blacklistTokenSchema)
+module.exports = tokenBlacklistModel
+```
+
+#### Step 8: Create `src/controllers/auth.controller.js` — Auth logic
+Contains 4 functions:
+- **`registerUserController`** — Validates body → checks if user exists → hashes password → creates user → signs JWT → sets cookie → returns user
+- **`loginUserController`** — Finds user by email → compares passwords → signs JWT → sets cookie → returns user
+- **`logoutUserController`** — Blacklists the token → clears cookie
+- **`getMeController`** — Finds user by `req.user.id` (set by middleware) → returns user
+
+#### Step 9: Create `src/middlewares/auth.middleware.js` — JWT guard
+```js
+const jwt = require("jsonwebtoken")
+const tokenBlacklistModel = require("../models/blacklist.model")
+
+async function authUser(req, res, next) {
+    const token = req.cookies.token
+    if (!token) {
+        return res.status(401).json({ message: "Token not provided." })
+    }
+    const isTokenBlacklisted = await tokenBlacklistModel.findOne({ token })
+    if (isTokenBlacklisted) {
+        return res.status(401).json({ message: "token is invalid" })
+    }
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET)
+        req.user = decoded
+        next()
+    } catch (err) {
+        return res.status(401).json({ message: "Invalid token." })
+    }
+}
+module.exports = { authUser }
+```
+
+#### Step 10: Create `src/routes/auth.routes.js` — Route definitions
+```js
+const { Router } = require('express')
+const authController = require("../controllers/auth.controller")
+const authMiddleware = require("../middlewares/auth.middleware")
+const authRouter = Router()
+
+authRouter.post("/register", authController.registerUserController)
+authRouter.post("/login", authController.loginUserController)
+authRouter.get("/logout", authController.logoutUserController)
+authRouter.get("/get-me", authMiddleware.authUser, authController.getMeController)
+
+module.exports = authRouter
+```
+
+#### Step 11: Create `src/app.js` — Express app with middleware
+```js
+const express = require("express")
+const cookieParser = require("cookie-parser")
+const cors = require("cors")
+
+const app = express()
+app.use(cors({
+    origin: "http://localhost:5173",
+    credentials: true
+}))
+app.use(express.json())
+app.use(cookieParser())
+const authRouter = require("./routes/auth.routes")
+app.use("/api/auth", authRouter)
+module.exports = app
+```
+
+#### Step 12: Create `server.js` — Entry point
+```js
+require("dotenv").config();
+const app = require("./src/app");
+const connectToDB = require("./src/config/database")
+
+connectToDB()
+app.listen(3000, () => {
+    console.log("server is running on port 3000")
+})
+```
+
+#### Step 13: Run the Backend
+```bash
+npx nodemon server.js
+```
+You should see: `server is running on port 3000` and `connected to Database`.
+
+---
+
+### Phase 2 — Frontend Setup
+
+#### Step 14: Initialize the Frontend project
+```bash
+cd ..
+npm create vite@latest Frontend -- --template react
+cd Frontend
+npm install
+```
+
+#### Step 15: Install Frontend dependencies
+```bash
+npm install react-router-dom axios
+npm install -D sass-embedded
+```
+
+| Package | Why |
+|---|---|
+| `react-router-dom` | Client-side routing (Login, Register, Home pages) |
+| `axios` | HTTP client to call backend APIs |
+| `sass-embedded` | Compiles `.scss` files (required by Vite for SCSS) |
+
+#### Step 16: Create the folder structure
+```bash
+mkdir src/pages
+mkdir src/features
+mkdir src/features/auth
+mkdir src/features/auth/components
+mkdir src/features/auth/hooks
+mkdir src/features/auth/pages
+mkdir src/features/auth/services
+mkdir src/features/ai
+```
+
+#### Step 17: Create `src/features/auth/services/auth.api.js` — API calls
+```js
+import axios from "axios"
+
+const api = axios.create({
+    baseURL: "http://localhost:3000",
+    withCredentials: true
+})
+
+export async function register({ username, email, password }) {
+    const response = await api.post('/api/auth/register', { username, email, password })
+    return response.data
+}
+
+export async function login({ email, password }) {
+    const response = await api.post("/api/auth/login", { email, password })
+    return response.data
+}
+
+export async function logout() {
+    const response = await api.get("/api/auth/logout")
+    return response.data
+}
+
+export async function getMe() {
+    const response = await api.get("/api/auth/get-me")
+    return response.data
+}
+```
+
+#### Step 18: Create `src/features/auth/auth.context.jsx` — Auth state
+```jsx
+import { createContext, useState } from "react";
+
+export const AuthContext = createContext()
+
+export const AuthProvider = ({ children }) => {
+    const [user, setUser] = useState(null)
+    const [loading, setLoading] = useState(true)
+
+    return (
+        <AuthContext.Provider value={{ user, setUser, loading, setLoading }}>
+            {children}
+        </AuthContext.Provider>
+    )
+}
+```
+
+> [!IMPORTANT]
+> This file MUST have `.jsx` extension (not `.js`) because it contains JSX. Vite will throw a parse error otherwise.
+
+#### Step 19: Create `src/features/auth/hooks/useAuth.js` — Custom hook
+This hook provides `handleLogin`, `handleRegister`, `handleLogout`, and auto-checks login on mount via `useEffect → getMe()`.
+
+#### Step 20: Create `src/features/auth/pages/Login.jsx` — Login page
+Form with email + password. On submit → `handleLogin()` → `navigate("/")`.
+
+#### Step 21: Create `src/features/auth/pages/Register.jsx` — Register page
+Form with username + email + password. On submit → `handleRegister()` → `navigate("/")`.
+
+#### Step 22: Create `src/features/auth/components/protected.jsx` — Route guard
+```jsx
+import { useAuth } from "../hooks/useAuth";
+import { Navigate } from "react-router";
+
+const Protected = ({ children }) => {
+    const { loading, user } = useAuth()
+    if (loading) return (<main><h1>Loading...</h1></main>)
+    if (!user) return <Navigate to={'/login'} />
+    return children
+}
+export default Protected
+```
+
+#### Step 23: Create `src/features/auth/auth.form.scss` — Styling
+Premium dark theme with glassmorphism, gradient backgrounds, styled inputs, and animated buttons.
+
+#### Step 24: Create `src/pages/Home.jsx` — Protected home page
+```jsx
+import { useAuth } from '../features/auth/hooks/useAuth'
+import '../features/auth/auth.form.scss'
+
+const Home = () => {
+    const { user, handleLogout } = useAuth()
+    return (
+        <main>
+            <div className="form-container">
+                <h1>Welcome, {user?.username || 'User'}!</h1>
+                <button className="button primary-button" onClick={handleLogout}>Logout</button>
+            </div>
+        </main>
+    )
+}
+export default Home
+```
+
+#### Step 25: Create `src/app.routes.jsx` — Routes
+```jsx
+import { createBrowserRouter } from "react-router";
+import Login from "./features/auth/pages/Login";
+import Register from "./features/auth/pages/Register";
+import Home from "./pages/Home";
+import Protected from "./features/auth/components/protected";
+
+export const router = createBrowserRouter([
+    { path: "/login", element: <Login /> },
+    { path: "/register", element: <Register /> },
+    { path: "/", element: <Protected><Home /></Protected> }
+])
+```
+
+#### Step 26: Update `src/App.jsx`
+```jsx
+import { RouterProvider } from "react-router"
+import { router } from "./app.routes.jsx"
+
+function App() {
+    return <RouterProvider router={router} />
+}
+export default App
+```
+
+#### Step 27: Update `src/main.jsx` — Wrap with AuthProvider
+```jsx
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import App from './App.jsx'
+import { AuthProvider } from './features/auth/auth.context.jsx'
+
+createRoot(document.getElementById('root')).render(
+    <StrictMode>
+        <AuthProvider>
+            <App />
+        </AuthProvider>
+    </StrictMode>,
+)
+```
+
+#### Step 28: Run the Frontend
+```bash
+npm run dev
+```
+Opens at `http://localhost:5173`. Navigate to `/register` to create an account, then get redirected to Home!
+
+Now proceed to **Phase 3** (above) to add the AI interview feature.
+
+---
+
+## Architecture Flowcharts
+
+### 1. Backend Architecture
+
+```mermaid
+flowchart TB
+    subgraph Entry["🚀 Entry Point"]
+        SERVER["server.js\n• Load .env\n• Connect MongoDB\n• Listen on :3000"]
+        APP["app.js\n• express.json()\n• cookie-parser\n• CORS config"]
+    end
+
+    SERVER --> APP
+
+    subgraph MW["🛡️ Middlewares"]
+        AUTH_MW["auth.middleware.js\n• Read JWT from cookie\n• Check blacklist\n• Verify token\n• Attach req.user"]
+        FILE_MW["file.middleware.js\n• Multer memoryStorage\n• 3MB file limit\n• Parse multipart/form-data"]
+    end
+
+    subgraph Routes["🛣️ Routes"]
+        AUTH_R["auth.routes.js\n• POST /register\n• POST /login\n• GET /logout\n• GET /get-me"]
+        INT_R["interview.routes.js\n• POST /\n• GET /\n• GET /report/:id\n• POST /resume/pdf/:id"]
+    end
+
+    APP -->|"/api/auth"| AUTH_R
+    APP -->|"/api/interview"| INT_R
+    INT_R --> AUTH_MW
+    INT_R --> FILE_MW
+    AUTH_R -->|"/get-me, /logout"| AUTH_MW
+
+    subgraph Controllers["⚙️ Controllers"]
+        AUTH_C["auth.controller.js\n• register: validate → hash → save → JWT\n• login: find → compare → JWT\n• logout: blacklist token\n• getMe: return user"]
+        INT_C["interview.controller.js\n• generate: parse PDF → AI → save\n• getById: find by id + user\n• getAll: list user reports\n• resumePdf: AI HTML → Puppeteer PDF"]
+    end
+
+    AUTH_R --> AUTH_C
+    INT_R --> INT_C
+
+    subgraph Services["🤖 AI Services"]
+        AI_SVC["ai.service.js\n• convertZodToGeminiSchema()\n• generateInterviewReport()\n• generateResumePdf()\n• generatePdfFromHtml()"]
+    end
+
+    INT_C --> AI_SVC
+
+    subgraph External["☁️ External"]
+        GEMINI["Google Gemini API\n• Structured JSON output\n• Interview report generation\n• Resume HTML generation"]
+        PUPPET["Puppeteer\n• Headless Chrome\n• HTML → PDF conversion"]
+    end
+
+    AI_SVC -->|"generateContent()"| GEMINI
+    AI_SVC -->|"page.pdf()"| PUPPET
+
+    subgraph Models["💾 MongoDB Models"]
+        USER_M["user.model.js\n• username, email, password"]
+        BL_M["blacklist.model.js\n• token, timestamps"]
+        INT_M["interviewReport.model.js\n• matchScore, title\n• technicalQuestions[]\n• behavioralQuestions[]\n• skillGaps[]\n• preparationPlan[]\n• user ref, timestamps"]
+    end
+
+    AUTH_C --> USER_M
+    AUTH_C --> BL_M
+    AUTH_MW --> BL_M
+    INT_C --> INT_M
+
+    style Entry fill:#1e293b,stroke:#38bdf8,color:#f1f5f9
+    style MW fill:#1e293b,stroke:#f59e0b,color:#f1f5f9
+    style Routes fill:#1e293b,stroke:#a78bfa,color:#f1f5f9
+    style Controllers fill:#1e293b,stroke:#34d399,color:#f1f5f9
+    style Services fill:#1e293b,stroke:#f472b6,color:#f1f5f9
+    style External fill:#0f172a,stroke:#fb923c,color:#f1f5f9
+    style Models fill:#1e293b,stroke:#60a5fa,color:#f1f5f9
+```
+
+---
+
+### 2. Frontend Architecture
+
+```mermaid
+flowchart TB
+    subgraph Entry["🚀 Entry Point"]
+        MAIN["main.jsx\n• ReactDOM.createRoot\n• Import index.scss\n• Render App"]
+        INDEX_CSS["index.scss\n• Global CSS reset\n• Dark theme variables\n• Inter font import\n• Loading animation"]
+    end
+
+    MAIN --> APP_COMP
+
+    subgraph Providers["🏗️ Providers & Router"]
+        APP_COMP["App.jsx\n• AuthProvider wrapper\n• InterviewProvider wrapper\n• RouterProvider"]
+        ROUTER["app.routes.jsx\n• /login → Login\n• /register → Register\n• / → Protected → Home\n• /interview/:id → Protected → Interview"]
+    end
+
+    APP_COMP --> ROUTER
+
+    subgraph AuthFeature["🔐 Auth Feature"]
+        AUTH_CTX["auth.context.jsx\n• user, setUser\n• loading, setLoading\n• AuthProvider"]
+        AUTH_HOOK["useAuth.js\n• handleLogin()\n• handleRegister()\n• handleLogout()\n• useEffect → getMe()"]
+        AUTH_API["auth.api.js\n• Axios instance\n• register(), login()\n• logout(), getMe()"]
+        PROTECTED["protected.jsx\n• Check loading → spinner\n• Check user → redirect\n• Render children"]
+        LOGIN_PG["Login.jsx\n• Email + password form\n• Submit → handleLogin\n• Navigate to /"]
+        REG_PG["Register.jsx\n• Username + email + password\n• Submit → handleRegister\n• Navigate to /"]
+        AUTH_SCSS["auth.form.scss\n• Glassmorphic card\n• Gradient backgrounds\n• Input focus effects"]
+    end
+
+    APP_COMP --> AUTH_CTX
+    AUTH_HOOK --> AUTH_CTX
+    AUTH_HOOK --> AUTH_API
+    PROTECTED --> AUTH_HOOK
+    LOGIN_PG --> AUTH_HOOK
+    REG_PG --> AUTH_HOOK
+    LOGIN_PG --> AUTH_SCSS
+    REG_PG --> AUTH_SCSS
+
+    subgraph InterviewFeature["🤖 Interview Feature"]
+        INT_CTX["interview.context.jsx\n• loading, report, reports\n• setLoading, setReport\n• InterviewProvider"]
+        INT_HOOK["userInterview.js\n• generateReport()\n• getReportById()\n• getReports()\n• getResumePdf()"]
+        INT_API["interview.api.js\n• generateInterviewReport()\n• getInterviewReportById()\n• getAllInterviewReports()\n• generateResumePdf()"]
+        HOME_PG["Home.jsx\n• Job description textarea\n• Resume dropzone upload\n• Self-description textarea\n• Recent reports grid\n• Generate button"]
+        INT_PG["Interview.jsx\n• 3-column layout\n• QuestionCard components\n• RoadMapDay components\n• Match score ring\n• Skill gap tags\n• Download Resume btn"]
+        HOME_SCSS["home.scss\n• Ambient glow orbs\n• Glass card styling\n• Dropzone effects\n• Shimmer button"]
+        INT_SCSS["interview.scss\n• Sticky 3-col layout\n• Expandable cards\n• Score ring animation\n• Severity badges"]
+    end
+
+    APP_COMP --> INT_CTX
+    INT_HOOK --> INT_CTX
+    INT_HOOK --> INT_API
+    HOME_PG --> INT_HOOK
+    INT_PG --> INT_HOOK
+    HOME_PG --> HOME_SCSS
+    INT_PG --> INT_SCSS
+
+    ROUTER --> PROTECTED
+    ROUTER --> LOGIN_PG
+    ROUTER --> REG_PG
+    PROTECTED --> HOME_PG
+    PROTECTED --> INT_PG
+
+    style Entry fill:#1e293b,stroke:#38bdf8,color:#f1f5f9
+    style Providers fill:#1e293b,stroke:#a78bfa,color:#f1f5f9
+    style AuthFeature fill:#1e293b,stroke:#f59e0b,color:#f1f5f9
+    style InterviewFeature fill:#1e293b,stroke:#34d399,color:#f1f5f9
+```
+
+---
+
+### 3. Full-Stack Data Flow
+
+```mermaid
+flowchart LR
+    subgraph Browser["🖥️ Browser - React :5173"]
+        direction TB
+        UI["UI Layer\n• Home.jsx\n• Interview.jsx\n• Login/Register"]
+        HOOKS["Custom Hooks\n• useAuth()\n• useInterview()"]
+        CONTEXT["React Context\n• AuthContext\n• InterviewContext"]
+        API_LAYER["API Layer (Axios)\n• auth.api.js\n• interview.api.js\n• withCredentials: true"]
+
+        UI --> HOOKS
+        HOOKS --> CONTEXT
+        HOOKS --> API_LAYER
+    end
+
+    subgraph Server["⚡ Express Server :3000"]
+        direction TB
+        MIDDLEWARE["Middleware Stack\n• CORS (origin: :5173)\n• express.json()\n• cookie-parser\n• authUser (JWT)\n• multer (file upload)"]
+        ROUTES_S["Route Handlers\n• /api/auth/*\n• /api/interview/*"]
+        CTRL["Controllers\n• Auth CRUD\n• Interview CRUD\n• PDF generation"]
+        SVC["AI Service\n• Zod schema definition\n• Schema conversion\n• Gemini API calls\n• Puppeteer PDF"]
+
+        MIDDLEWARE --> ROUTES_S
+        ROUTES_S --> CTRL
+        CTRL --> SVC
+    end
+
+    subgraph Data["💾 Data Layer"]
+        direction TB
+        MONGO["MongoDB Atlas\n• users collection\n• blacklistTokens\n• interviewreports"]
+        GEMINI_API["Google Gemini API\n• gemini-2.0-flash\n• Structured JSON output\n• Resume HTML generation"]
+    end
+
+    API_LAYER -->|"HTTP Requests\n+ JWT Cookie"| MIDDLEWARE
+    ROUTES_S -->|"JSON Response\n+ Set-Cookie"| API_LAYER
+
+    CTRL -->|"Mongoose\nCRUD"| MONGO
+    SVC -->|"generateContent()\nwith Type schema"| GEMINI_API
+
+    MONGO -->|"Documents"| CTRL
+    GEMINI_API -->|"Structured JSON\nor HTML"| SVC
+
+    style Browser fill:#0f172a,stroke:#38bdf8,color:#f1f5f9
+    style Server fill:#0f172a,stroke:#34d399,color:#f1f5f9
+    style Data fill:#0f172a,stroke:#f59e0b,color:#f1f5f9
+```

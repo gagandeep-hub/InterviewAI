@@ -1,0 +1,179 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+$bg-primary: #0b0f19;
+$accent-gradient: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
+$accent-gradient-hover: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+$text-main: #f8fafc;
+$text-muted: #94a3b8;
+$card-bg: rgba(30, 41, 59, 0.4);
+$card-border: rgba(255, 255, 255, 0.08);
+
+.auth-page {
+    min-height: 100vh;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: 'Inter', sans-serif;
+    background: radial-gradient(circle at top right, #1e1b4b 0%, $bg-primary 40%, $bg-primary 100%);
+    color: $text-main;
+    position: relative;
+    overflow: hidden;
+    padding: 2rem 1rem;
+
+    /* Animated Background Orbs */
+    &::before, &::after {
+        content: '';
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(100px);
+        z-index: 0;
+        pointer-events: none;
+    }
+
+    &::before {
+        width: 600px; height: 600px;
+        background: rgba(79, 172, 254, 0.1);
+        top: -200px; left: -200px;
+        animation: floatOrb 12s infinite alternate ease-in-out;
+    }
+    
+    &::after {
+        width: 500px; height: 500px;
+        background: rgba(139, 92, 246, 0.1);
+        bottom: -100px; right: -150px;
+        animation: floatOrb 10s infinite alternate-reverse ease-in-out;
+    }
+
+    .form-container {
+        width: 100%;
+        max-width: 440px;
+        padding: 3rem 2.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+        
+        /* Glassmorphism */
+        background: $card-bg;
+        backdrop-filter: blur(24px);
+        -webkit-backdrop-filter: blur(24px);
+        border: 1px solid $card-border;
+        border-radius: 24px;
+        box-shadow: 0 30px 60px -20px rgba(0, 0, 0, 0.6);
+        z-index: 1;
+        animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+
+        @media (max-width: 480px) {
+            padding: 2.5rem 1.5rem;
+            border-radius: 20px;
+        }
+
+        h1 {
+            font-size: 2.2rem;
+            font-weight: 800;
+            text-align: center;
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.03em;
+            background: $accent-gradient;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        p {
+            text-align: center;
+            font-size: 0.95rem;
+            color: $text-muted;
+            margin-top: 1.5rem;
+        }
+    }
+
+    form {
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+    }
+
+    .input-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+
+        label {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: $text-main;
+            margin-left: 0.2rem;
+        }
+
+        input {
+            width: 100%;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(0, 0, 0, 0.2);
+            color: $text-main;
+            outline: none;
+            padding-inline: 1.25rem;
+            padding-block: 1rem;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-family: inherit;
+            transition: all 0.3s ease;
+
+            &::placeholder {
+                color: rgba(148, 163, 184, 0.5);
+            }
+
+            &:focus {
+                border-color: #4facfe;
+                box-shadow: 0 0 0 4px rgba(79, 172, 254, 0.15);
+                background: rgba(0, 0, 0, 0.3);
+            }
+        }
+    }
+
+    .button.primary-button {
+        margin-top: 1rem;
+        padding-block: 1rem;
+        border: none;
+        border-radius: 12px;
+        background: $accent-gradient;
+        color: white;
+        font-family: inherit;
+        font-weight: 700;
+        font-size: 1.05rem;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 10px 25px -5px rgba(79, 172, 254, 0.4);
+
+        &:hover {
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 15px 30px -5px rgba(79, 172, 254, 0.6);
+            background: $accent-gradient-hover;
+        }
+
+        &:active {
+            transform: translateY(0) scale(0.98);
+        }
+    }
+
+    a {
+        color: #4facfe;
+        text-decoration: none;
+        font-weight: 600;
+        transition: color 0.2s ease;
+
+        &:hover {
+            color: #00f2fe;
+            text-decoration: underline;
+        }
+    }
+}
+
+@keyframes floatOrb {
+    0% { transform: translate(0, 0) scale(1); }
+    100% { transform: translate(50px, 50px) scale(1.1); }
+}
+
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(40px); }
+    to { opacity: 1; transform: translateY(0); }
+}
