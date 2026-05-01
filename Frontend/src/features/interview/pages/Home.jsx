@@ -7,10 +7,10 @@ import { useAuth } from '../../auth/hooks/useAuth.js'
 const Home = () => {
 
     const { handleLogout } = useAuth()
-    const { loading, generateReport,reports } = useInterview()
-    const [ jobDescription, setJobDescription ] = useState("")
-    const [ selfDescription, setSelfDescription ] = useState("")
-    const [ fileName, setFileName ] = useState("")
+    const { loading, generateReport, reports } = useInterview()
+    const [jobDescription, setJobDescription] = useState("")
+    const [selfDescription, setSelfDescription] = useState("")
+    const [fileName, setFileName] = useState("")
     const resumeInputRef = useRef()
 
     const handleFileChange = (e) => {
@@ -21,7 +21,7 @@ const Home = () => {
     const navigate = useNavigate()
 
     const handleGenerateReport = async () => {
-        const resumeFile = resumeInputRef.current?.files?.[ 0 ]
+        const resumeFile = resumeInputRef.current?.files?.[0]
         const data = await generateReport({ jobDescription, selfDescription, resumeFile })
         if (data?._id) {
             navigate(`/interview/${data._id}`)
@@ -31,16 +31,6 @@ const Home = () => {
 
     return (
         <div className='home-page'>
-
-            {/* Logout Button */}
-            <button 
-                onClick={async () => { await handleLogout(); navigate('/login'); }}
-                style={{ position: 'absolute', top: '2rem', right: '2rem', zIndex: 100, background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)', padding: '0.6rem 1.2rem', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', transition: 'all 0.3s ease' }}
-                onMouseEnter={(e) => { e.target.style.background = 'rgba(239, 68, 68, 0.2)'; e.target.style.transform = 'translateY(-2px)' }}
-                onMouseLeave={(e) => { e.target.style.background = 'rgba(239, 68, 68, 0.1)'; e.target.style.transform = 'none' }}
-            >
-                Logout
-            </button>
 
             {/* Page Header */}
             <header className='page-header'>
@@ -165,9 +155,17 @@ const Home = () => {
 
             {/* Page Footer */}
             <footer className='page-footer'>
-                <a href='#'>Privacy Policy</a>
-                <a href='#'>Terms of Service</a>
-                <a href='#'>Help Center</a>
+                <div className="footer-links">
+                    <a href='#'>Privacy Policy</a>
+                    <a href='#'>Terms of Service</a>
+                    <a href='#'>Help Center</a>
+                </div>
+                <button
+                    className="logout-btn-footer"
+                    onClick={async () => { await handleLogout(); navigate('/login'); }}
+                >
+                    Logout
+                </button>
             </footer>
         </div>
     )

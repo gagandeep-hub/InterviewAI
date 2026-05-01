@@ -29,11 +29,17 @@ $card-border: rgba(255, 255, 255, 0.08);
     overflow-x: hidden;
 
     /* Responsive Padding */
-    @media (max-width: 1024px) { padding: 3rem 1.5rem 2rem; }
-    @media (max-width: 768px)  { padding: 2rem 1rem 1.5rem; }
+    @media (max-width: 1024px) {
+        padding: 3rem 1.5rem 2rem;
+    }
+
+    @media (max-width: 768px) {
+        padding: 2rem 1rem 1.5rem;
+    }
 
     /* Animated Background Orbs */
-    &::before, &::after {
+    &::before,
+    &::after {
         content: '';
         position: fixed;
         border-radius: 50%;
@@ -43,23 +49,32 @@ $card-border: rgba(255, 255, 255, 0.08);
     }
 
     &::before {
-        width: 600px; height: 600px;
+        width: 600px;
+        height: 600px;
         background: rgba(79, 172, 254, 0.1);
-        top: -200px; left: -200px;
+        top: -200px;
+        left: -200px;
         animation: floatOrb 12s infinite alternate ease-in-out;
     }
-    
+
     &::after {
-        width: 500px; height: 500px;
+        width: 500px;
+        height: 500px;
         background: rgba(139, 92, 246, 0.1);
-        bottom: -100px; right: -150px;
+        bottom: -100px;
+        right: -150px;
         animation: floatOrb 10s infinite alternate-reverse ease-in-out;
     }
 }
 
 @keyframes floatOrb {
-    0% { transform: translate(0, 0) scale(1); }
-    100% { transform: translate(50px, 50px) scale(1.1); }
+    0% {
+        transform: translate(0, 0) scale(1);
+    }
+
+    100% {
+        transform: translate(50px, 50px) scale(1.1);
+    }
 }
 
 /* ── Page Header ──────────────────────────────────────────────────── */
@@ -82,9 +97,17 @@ $card-border: rgba(255, 255, 255, 0.08);
         margin-bottom: 1rem;
         line-height: 1.1;
 
-        @media (max-width: 1024px) { font-size: 3rem; }
-        @media (max-width: 768px)  { font-size: 2.2rem; }
-        @media (max-width: 480px)  { font-size: 1.8rem; }
+        @media (max-width: 1024px) {
+            font-size: 3rem;
+        }
+
+        @media (max-width: 768px) {
+            font-size: 2.2rem;
+        }
+
+        @media (max-width: 480px) {
+            font-size: 1.8rem;
+        }
     }
 
     .highlight {
@@ -101,13 +124,22 @@ $card-border: rgba(255, 255, 255, 0.08);
         max-width: 600px;
         margin: 0 auto;
 
-        @media (max-width: 768px) { font-size: 1rem; }
+        @media (max-width: 768px) {
+            font-size: 1rem;
+        }
     }
 }
 
 @keyframes slideDown {
-    from { opacity: 0; transform: translateY(-30px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(-30px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 /* ── Interview Card ───────────────────────────────────────────────── */
@@ -120,7 +152,7 @@ $card-border: rgba(255, 255, 255, 0.08);
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
     border: 1px solid $card-border;
-    box-shadow: 0 30px 60px -20px rgba(0,0,0,0.6);
+    box-shadow: 0 30px 60px -20px rgba(0, 0, 0, 0.6);
     animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both;
     display: flex;
     flex-direction: column;
@@ -128,7 +160,7 @@ $card-border: rgba(255, 255, 255, 0.08);
     &__body {
         display: grid;
         grid-template-columns: 1fr 1px 1fr;
-        
+
         @media (max-width: 992px) {
             grid-template-columns: 1fr;
         }
@@ -154,8 +186,15 @@ $card-border: rgba(255, 255, 255, 0.08);
 }
 
 @keyframes fadeInUp {
-    from { opacity: 0; transform: translateY(40px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(40px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 /* ── Panels ───────────────────────────────────────────────────────── */
@@ -165,21 +204,28 @@ $card-border: rgba(255, 255, 255, 0.08);
     flex-direction: column;
     gap: 1.5rem;
 
-    @media (max-width: 1200px) { padding: 2rem; }
-    @media (max-width: 768px)  { padding: 1.5rem; }
+    @media (max-width: 1200px) {
+        padding: 2rem;
+    }
+
+    @media (max-width: 768px) {
+        padding: 1.5rem;
+    }
 
     &__header {
         display: flex;
         align-items: center;
         gap: 0.75rem;
-        
+
         h2 {
             font-size: 1.25rem;
             font-weight: 600;
             color: $text-main;
             margin: 0;
-            
-            @media (max-width: 768px) { font-size: 1.1rem; }
+
+            @media (max-width: 768px) {
+                font-size: 1.1rem;
+            }
         }
     }
 
@@ -209,7 +255,9 @@ $card-border: rgba(255, 255, 255, 0.08);
         resize: none;
         transition: all 0.3s ease;
 
-        @media (max-width: 992px) { min-height: 200px; }
+        @media (max-width: 992px) {
+            min-height: 200px;
+        }
 
         &::placeholder {
             color: rgba(148, 163, 184, 0.5);
@@ -255,12 +303,13 @@ $card-border: rgba(255, 255, 255, 0.08);
         color: #fca5a5;
         border: 1px solid rgba(239, 68, 68, 0.3);
     }
-    
+
     &--best {
         background: rgba(16, 185, 129, 0.15);
         color: #6ee7b7;
         border: 1px solid rgba(16, 185, 129, 0.3);
-        margin-left: auto; /* Push to right */
+        margin-left: auto;
+        /* Push to right */
     }
 }
 
@@ -333,7 +382,8 @@ $card-border: rgba(255, 255, 255, 0.08);
     gap: 1rem;
     margin: 0.5rem 0;
 
-    &::before, &::after {
+    &::before,
+    &::after {
         content: '';
         flex: 1;
         height: 1px;
@@ -384,7 +434,7 @@ $card-border: rgba(255, 255, 255, 0.08);
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    
+
     &::before {
         content: '';
         display: inline-block;
@@ -412,7 +462,7 @@ $card-border: rgba(255, 255, 255, 0.08);
     cursor: pointer;
     box-shadow: 0 10px 25px -5px rgba(79, 172, 254, 0.4);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    
+
     @media (max-width: 768px) {
         width: 100%;
         padding: 1.2rem;
@@ -427,11 +477,11 @@ $card-border: rgba(255, 255, 255, 0.08);
     &:active {
         transform: translateY(0) scale(0.98);
     }
-    
+
     svg {
         transition: transform 0.3s ease;
     }
-    
+
     &:hover svg {
         transform: translateX(4px);
     }
@@ -461,7 +511,7 @@ $card-border: rgba(255, 255, 255, 0.08);
     list-style: none;
     padding: 0;
     margin: 0;
-    
+
     @media (max-width: 768px) {
         grid-template-columns: 1fr;
     }
@@ -516,11 +566,13 @@ $card-border: rgba(255, 255, 255, 0.08);
         color: #34d399;
         border: 1px solid rgba(16, 185, 129, 0.3);
     }
+
     .score--mid {
         background: rgba(245, 158, 11, 0.15);
         color: #fbbf24;
         border: 1px solid rgba(245, 158, 11, 0.3);
     }
+
     .score--low {
         background: rgba(239, 68, 68, 0.15);
         color: #f87171;
@@ -531,18 +583,48 @@ $card-border: rgba(255, 255, 255, 0.08);
 /* ── Page Footer ──────────────────────────────────────────────────── */
 .page-footer {
     margin-top: 4rem;
-    padding: 2rem;
+    margin-left: -2rem;
+    margin-right: -2rem;
+    margin-bottom: -3rem;
+    width: calc(100% + 4rem);
+    padding: 2.5rem 2rem;
     display: flex;
-    gap: 3rem;
-    justify-content: center;
+    justify-content: space-between;
+    align-items: center;
     z-index: 1;
-    width: 100%;
     border-top: 1px solid rgba(255, 255, 255, 0.05);
+    background: rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(10px);
 
-    @media (max-width: 480px) {
+    @media (max-width: 1024px) {
+        margin-left: -1.5rem;
+        margin-right: -1.5rem;
+        margin-bottom: -2rem;
+        width: calc(100% + 3rem);
+        padding: 2rem 1.5rem;
+    }
+
+    @media (max-width: 768px) {
+        margin-left: -1rem;
+        margin-right: -1rem;
+        margin-bottom: -1.5rem;
+        width: calc(100% + 2rem);
+        padding: 2.5rem 1rem;
         flex-direction: column;
-        align-items: center;
-        gap: 1.5rem;
+        gap: 2rem;
+        text-align: center;
+    }
+
+
+    .footer-links {
+        display: flex;
+        gap: 3rem;
+
+        @media (max-width: 480px) {
+            gap: 1.5rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
     }
 
     a {
@@ -556,6 +638,35 @@ $card-border: rgba(255, 255, 255, 0.08);
             color: #4facfe;
         }
     }
+
+    .logout-btn-footer {
+        background: rgba(239, 68, 68, 0.1);
+        color: #ef4444;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        padding: 0.75rem 2rem;
+        border-radius: 12px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        font-family: inherit;
+        font-size: 0.9rem;
+
+        &:hover {
+            background: rgba(239, 68, 68, 0.2);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(239, 68, 68, 0.2);
+            border-color: rgba(239, 68, 68, 0.5);
+        }
+
+        &:active {
+            transform: translateY(0);
+        }
+
+        @media (max-width: 768px) {
+            width: 100%;
+            padding: 1rem;
+        }
+    }
 }
 
 /* Loading Screen Styles */
@@ -567,7 +678,7 @@ $card-border: rgba(255, 255, 255, 0.08);
     background: $bg-primary;
     color: $text-main;
     font-family: 'Inter', sans-serif;
-    
+
     h1 {
         font-size: 2rem;
         font-weight: 600;
@@ -579,6 +690,13 @@ $card-border: rgba(255, 255, 255, 0.08);
 }
 
 @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
 }
