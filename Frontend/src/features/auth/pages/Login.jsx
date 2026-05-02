@@ -32,6 +32,7 @@ const Login = () => {
         <main className="auth-page">
             <div className="form-container">
                 <h1>Login</h1>
+                <p className='auth-subtitle'>// SECURE_ACCESS_PORTAL</p>
                 <form onSubmit={handleSubmit}>
                     <div className="input-group">
                         <label htmlFor="email">Email</label>

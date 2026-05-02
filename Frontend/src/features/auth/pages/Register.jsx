@@ -32,6 +32,7 @@ const Register = () => {
         <main className="auth-page">
             <div className="form-container">
                 <h1>Register</h1>
+                <p className='auth-subtitle'>// CREATE_NEW_PROFILE</p>
 
                 <form onSubmit={handleSubmit}>
 

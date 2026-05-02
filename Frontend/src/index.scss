@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Manrope:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 /* ── CSS Reset & Base ─────────────────────────────────────────────── */
 *,
@@ -17,9 +17,9 @@ html {
 }
 
 body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background: #0b1120;
-    color: #f1f5f9;
+    font-family: 'Manrope', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #080a0e;
+    color: #e8eaf0;
     line-height: 1.6;
     min-height: 100vh;
     overflow-x: hidden;
@@ -53,19 +53,19 @@ img, svg {
     max-width: 100%;
 }
 
-/* ── Scrollbar (dark theme) ───────────────────────────────────────── */
+/* ── Scrollbar (cyberpunk) ───────────────────────────────────────── */
 ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
 }
 ::-webkit-scrollbar-track {
-    background: rgba(15, 23, 42, 0.5);
+    background: #0d0f14;
 }
 ::-webkit-scrollbar-thumb {
-    background: rgba(148, 163, 184, 0.25);
-    border-radius: 999px;
+    background: rgba(204, 255, 0, 0.25);
+    border-radius: 0;
     &:hover {
-        background: rgba(148, 163, 184, 0.4);
+        background: rgba(204, 255, 0, 0.5);
     }
 }
 
@@ -77,22 +77,49 @@ img, svg {
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+    background: #080a0e;
     gap: 1.5rem;
+    position: relative;
+
+    &::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: repeating-linear-gradient(
+            0deg,
+            transparent,
+            transparent 2px,
+            rgba(204, 255, 0, 0.015) 2px,
+            rgba(204, 255, 0, 0.015) 4px
+        );
+        pointer-events: none;
+    }
 
     h1 {
-        font-size: 1.5rem;
-        font-weight: 600;
-        background: linear-gradient(to right, #c084fc, #ec4899);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        animation: loadingPulse 1.5s ease-in-out infinite;
+        font-family: 'Space Mono', monospace;
+        font-size: 1.4rem;
+        font-weight: 700;
+        color: #ccff00;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        animation: glitchPulse 1.5s ease-in-out infinite;
+        position: relative;
+        z-index: 1;
+        text-align: center;
+        padding: 0 1.5rem;
+        word-break: break-word;
+        max-width: 90vw;
+
+        &::before {
+            content: '> ';
+            color: rgba(204, 255, 0, 0.5);
+        }
     }
 }
 
-@keyframes loadingPulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
+@keyframes glitchPulse {
+    0%, 100% { opacity: 1; text-shadow: 0 0 10px rgba(204, 255, 0, 0.6); }
+    50% { opacity: 0.7; text-shadow: 0 0 20px rgba(204, 255, 0, 1); }
 }
 
 /* ── Shared Button ────────────────────────────────────────────────── */
@@ -100,20 +127,25 @@ img, svg {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 0.8rem 1.5rem;
+    padding: 0.85rem 1.75rem;
     border: none;
-    border-radius: 0.75rem;
-    background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
-    color: white;
-    font-weight: 600;
-    font-size: 0.95rem;
+    border-radius: 0;
+    background: #ccff00;
+    color: #080a0e;
+    font-family: 'Space Mono', monospace;
+    font-weight: 700;
+    font-size: 0.85rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
     cursor: pointer;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-    box-shadow: 0 4px 14px 0 rgba(236, 72, 153, 0.35);
+    transition: all 0.2s ease;
+    clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+    box-shadow: 0 0 20px rgba(204, 255, 0, 0.3);
 
     &:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(236, 72, 153, 0.5);
+        background: #d4ff33;
+        box-shadow: 0 0 30px rgba(204, 255, 0, 0.6), 0 0 60px rgba(204, 255, 0, 0.2);
+        transform: translateY(-1px);
     }
     &:active {
         transform: translateY(0);

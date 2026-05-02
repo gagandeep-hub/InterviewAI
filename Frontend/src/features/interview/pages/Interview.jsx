@@ -98,7 +98,9 @@ const Interview = () => {
         <div className='interview-page'>
             <header className='report-header'>
                 <div className='report-header__brand' onClick={() => navigate('/dashboard')}>
-                    InterviewAi
+                    <span className="brand-bracket">[</span>
+                    INTERVIEW<span className="brand-accent">_AI</span>
+                    <span className="brand-bracket">]</span>
                 </div>
                 <div className='report-header__actions'>
                     <button onClick={() => { getResumePdf(interviewId) }} className='btn-download'>

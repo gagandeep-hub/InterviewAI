@@ -29,13 +29,16 @@ const Home = () => {
     }
 
 
+    const jobCharCount = jobDescription.length
+
     return (
         <div className='home-page'>
 
             {/* Page Header */}
             <header className='page-header'>
-                <h1>Create Your Custom <span className='highlight'>Interview Plan</span></h1>
-                <p>Let our AI analyze the job requirements and your unique profile to build a winning strategy.</p>
+                <div className='header-ticker'>AI_ENGINE_v4.2 // ONLINE</div>
+                <h1>Build Your <span className='highlight'>Interview Strategy</span></h1>
+                <p>Feed the AI your job target and profile. Get a precision-crafted battle plan in 30 seconds.</p>
             </header>
 
             {/* Main Card */}
@@ -57,7 +60,7 @@ const Home = () => {
                             placeholder={`Paste the full job description here...\ne.g. 'Senior Frontend Engineer at Google requires proficiency in React, TypeScript, and large-scale system design...'`}
                             maxLength={5000}
                         />
-                        <div className='char-counter'>0 / 5000 chars</div>
+                        <div className='char-counter'>{jobCharCount} / 5000 chars</div>
                     </div>
 
                     {/* Vertical Divider */}
