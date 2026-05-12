@@ -1,4 +1,4 @@
-const { PDFParse } = require("pdf-parse")
+const pdfParse = require("pdf-parse")
 const { generateInterviewReport, generateResumePdf } = require("../services/ai.service")
 const interviewReportModel = require("../models/interviewReport.model")
 
@@ -12,8 +12,9 @@ async function generateInterViewReportController(req, res) {
         let resumeText = ""
 
         if (req.file) {
-            const parser = new PDFParse()
-            const resumeContent = await parser.lazyParse(req.file.buffer)
+            // pdf-parse default export is the correct public API; the class constructor
+            // requires an options object and crashes with new PDFParse() and no args.
+            const resumeContent = await pdfParse(req.file.buffer)
             resumeText = resumeContent.text
         }
 
