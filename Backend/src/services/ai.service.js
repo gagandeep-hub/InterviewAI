@@ -111,9 +111,38 @@ const interviewReportSchema = z.object({
     title: z.string().describe("The title of the job for which the interview report is generated"),
 })
 
+async function retryGenerateContent(prompt, schema) {
+    let retries = 3;
+    let delay = 2000; // 2 seconds
+
+    while (retries > 0) {
+        try {
+            const response = await ai.models.generateContent({
+                model: "gemini-2.5-flash",
+                contents: prompt,
+                config: {
+                    responseMimeType: "application/json",
+                    responseSchema: convertZodToGeminiSchema(schema),
+                }
+            });
+            return response;
+        } catch (error) {
+            const status = error.status || error.httpErrorCode?.statusCode;
+            if (status === 429 || error.message?.includes("429")) {
+                console.warn(`Rate limit hit. Retrying in ${delay}ms... (${retries} retries left)`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+                retries--;
+                delay *= 2;
+            } else {
+                console.error("AI generation error — status:", status, "| message:", error.message);
+                throw error;
+            }
+        }
+    }
+    throw new Error("AI service is currently overloaded. Please try again in a few minutes.");
+}
+
 async function generateInterviewReport({ resume, selfDescription, jobDescription }) {
-
-
     const prompt = `Generate an interview report for a candidate with the following details:
                         Resume: ${resume}
                         Self Description: ${selfDescription}
@@ -126,19 +155,8 @@ async function generateInterviewReport({ resume, selfDescription, jobDescription
                         - Create a 7-day preparation plan.
 `
 
-
-    const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: prompt,
-        config: {
-            responseMimeType: "application/json",
-            responseSchema: convertZodToGeminiSchema(interviewReportSchema),
-        }
-    })
-
-    return JSON.parse(response.text)
-
-
+    const response = await retryGenerateContent(prompt, interviewReportSchema);
+    return JSON.parse(typeof response.text === 'function' ? response.text() : response.text);
 }
 
 
@@ -181,17 +199,10 @@ async function generateResumePdf({ resume, selfDescription, jobDescription }) {
                         The resume should not be so lengthy, it should ideally be 1-2 pages long when converted to PDF. Focus on quality rather than quantity and make sure to include all the relevant information that can increase the candidate's chances of getting an interview call for the given job description.
                     `
 
-    const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: prompt,
-        config: {
-            responseMimeType: "application/json",
-            responseSchema: convertZodToGeminiSchema(resumePdfSchema),
-        }
-    })
+    const response = await retryGenerateContent(prompt, resumePdfSchema);
 
 
-    const jsonContent = JSON.parse(response.text)
+    const jsonContent = JSON.parse(typeof response.text === 'function' ? response.text() : response.text)
 
     const pdfBuffer = await generatePdfFromHtml(jsonContent.html)
 
