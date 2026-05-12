@@ -1,4 +1,5 @@
-const pdfParseLib = require("pdf-parse")
+const pdfParse = require("pdf-parse")
+const pdfParseLib = pdfParse.default || pdfParse
 const { generateInterviewReport, generateResumePdf } = require("../services/ai.service")
 const interviewReportModel = require("../models/interviewReport.model")
 
